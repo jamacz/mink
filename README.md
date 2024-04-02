@@ -250,5 +250,5 @@ This is not yet implemented, but functions such as `&`, `+` and `\` could operat
 
 ## Known Issues
 
-- Loops that cannot be optimised are not currently representable in the compuled code - there are surprisingly few cases where a loop cannot be optimised. Immediate plans to patch this.
+- Loops that cannot be optimised are not currently representable in the compiled code - there are surprisingly few cases where a loop cannot be optimised. Immediate plans to patch this.
 - A run-length encoding representation of the stack puts a limit on the size of each run of `!`s. There are long term plans to patch this.
