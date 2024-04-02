@@ -11,6 +11,7 @@ project/metals.sbt
 .tasty
 
 # sbt
+project/project/.bloop/
 project/project/
 project/target/
 target/
