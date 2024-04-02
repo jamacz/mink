@@ -182,8 +182,6 @@ object Main extends App {
 
   val chainedProgram = chain.mergeOnes(tailCallOptimisedProgram)
 
-  println(chainedProgram)
-
   // Generate C code and store in a temporary file
 
   val generatedCode = (new codegen()).generateProgram(chainedProgram)
