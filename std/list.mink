@@ -1,0 +1,25 @@
+= std.list
+$ std.op
+$ std.fmt
+
+; Performs `a` for each element in a list
+^ $ a ?= a ! & ^ a : ?
+
+; Skips the first list
+^& $ a ?= ! & ^& a : a ?
+
+; Performs `a` for each list in a 2d list
+^^ $ a ?= a ! ^& ^^ a : ?
+
+; Skips the first 2d list
+^^& $ a ?= ! ^& ^^& a : a ?
+
+; Performs `a` for each 2d list in a 3d list
+^^^ $ a ?= a ! ^^& ^^^ a : ?
+
+; Performs `a` on the first element of the list
+^+ $ a ?= a ! : ?
+
+; Performs `a` for each element in a list,
+; assuming `a` will remove the element
+^- $ a ?= a ^- a :

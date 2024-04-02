@@ -1,0 +1,10 @@
+= std.math
+$ std.op
+
+; Multiplies the top two items on the stack
+** ?= & & ? **_
+**_ $ = &(* & +) **_ : \
+
+; Gives the quotient and remainder of the top two items on the stack
+// ?= & & ? //_
+//_ $ = & * * &(&! - (!?! &(:?):?)) / ((:) & &(\!) //_:\)

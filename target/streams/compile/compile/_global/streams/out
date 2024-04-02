@@ -1,0 +1,8 @@
+[0m[[0m[33mwarn[0m] [0m[0m/home/jackmccomish/Coding/Projects/mink/mink/src/main/scala/codegen/codegen.scala:161:5: match may not be exhaustive.[0m
+[0m[[0m[33mwarn[0m] [0m[0mIt would fail on the following input: List(Loop(_, _, _))[0m
+[0m[[0m[33mwarn[0m] [0m[0m    instructions match {[0m
+[0m[[0m[33mwarn[0m] [0m[0m    ^[0m
+[0m[[0m[33mwarn[0m] [0m[0m1 deprecation (since 2.13.7)[0m
+[0m[[0m[33mwarn[0m] [0m[0m7 deprecations (since 4.5.0)[0m
+[0m[[0m[33mwarn[0m] [0m[0m8 deprecations in total; re-run with -deprecation for details[0m
+[0m[[0m[33mwarn[0m] [0m[0mfour warnings found[0m

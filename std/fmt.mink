@@ -1,0 +1,12 @@
+= std.fmt
+$ std.op
+$ std.math
+
+; Converts an integer into a decimal string representation
+int ?= &? int_
+int_ $ = %10 // %48 + / (!int_:)
+
+; Shorthand for "\n"
+nl $ ?= "\n"
+
+dbg ?= ! * int#nl# & dbg : ?
