@@ -20,6 +20,15 @@ struct t {
   struct t *n;
 };
 struct t *g = 0;
+static void op() {
+  if (s->n == 0) {
+    s->v = 0;
+  } else {
+    struct f *f = s;
+    s = s->n;
+    free(f);
+  }
+}
 static void p(uint32_t x) { s->v += x; }
 static void n(uint32_t x) {
   struct f *f = malloc(sizeof(struct f));
@@ -53,9 +62,13 @@ static void i() {
 static void o() {
   if (g->a) {
     g->b->v += s->v;
-    struct f *f = s;
-    s = s->n;
-    free(f);
+    if (s->n == 0) {
+      s->v = 0;
+    } else {
+      struct f *f = s;
+      s = s->n;
+      free(f);
+    }
   }
   g->b->n = s;
   s = g->t;
@@ -68,36 +81,8 @@ static bool m() {
     s->v--;
     return true;
   } else {
-    if (s->n == 0) {
-      return false;
-    }
-    struct f *f = s;
-    s = s->n;
-    free(f);
+    op();
     return false;
-  }
-}
-static void inspect() {
-  struct f *f = s;
-  while (f != 0) {
-    printf("{%d}", f->v);
-    f = f->n;
-  }
-  printf("\n");
-  struct t *t = g;
-  while (t != 0) {
-    printf("  [");
-    struct f *f = t->t;
-    while (f != 0) {
-      printf("{%d}", f->v);
-      f = f->n;
-    }
-    if (t->a) {
-      printf("+");
-    }
-    printf("]");
-    printf("{%d}\n", t->b->v);
-    t = t->n;
   }
 }
 static void r() {
@@ -128,17 +113,7 @@ static void h() {
     s = s->n;
     free(f);
   }
-  if (s->n == 0) return;
-  struct f *f = s;
-  s = s->n;
-  free(f);
-}
-static void op() {
-  if (s->n != 0) {
-    struct f *f = s;
-    s = s->n;
-    free(f);
-  }
+  op();
 }
 static void os() {
   d(s->v, false);
@@ -157,8 +132,8 @@ static void om() {
     } else {
       s->n->v -= s->v;
     }
+    op();
   }
-  op();
 }
 static void oc() {
   n(s->v);
@@ -166,8 +141,8 @@ static void oc() {
 static void ox() {
   if (s->n != 0) {
     s->n->v *= s->v;
+    op();
   }
-  op();
 }
 static void od() {
   if (s->n == 0) {
