@@ -124,12 +124,69 @@ static void h() {
   while (s->v != 0) {
     printf("%c", (char)s->v);
     struct f *f = s;
+    if (s->n == 0) return;
     s = s->n;
     free(f);
   }
+  if (s->n == 0) return;
   struct f *f = s;
   s = s->n;
   free(f);
+}
+static void op() {
+  if (s->n != 0) {
+    struct f *f = s;
+    s = s->n;
+    free(f);
+  }
+}
+static void os() {
+  d(s->v, false);
+  op();
+}
+static void oa() {
+  if (s->n != 0) {
+    s->n->v += s->v;
+    op();
+  }
+}
+static void om() {
+  if (s->n != 0) {
+    if (s->n->v < s->v) {
+      s->n->v = 0;
+    } else {
+      s->n->v -= s->v;
+    }
+  }
+  op();
+}
+static void oc() {
+  n(s->v);
+}
+static void ox() {
+  if (s->n != 0) {
+    s->n->v *= s->v;
+  }
+  op();
+}
+static void od() {
+  if (s->n == 0) {
+    s->v = 0;
+    return;
+  }
+  uint32_t n = s->n->v;
+  uint32_t d = s->v;
+  s->n->v = n / d;
+  s->v = n % d;
+}
+static void ow() {
+  if (s->n == 0) {
+    n(0);
+    return;
+  }
+  uint32_t v = s->n->v;
+  s->n->v = s->v;
+  s->v = v;
 }"""
   val mainStart = """int main() {
   s = malloc(sizeof(struct f));
@@ -137,10 +194,14 @@ static void h() {
   s->n = 0;"""
 
   var numLabels = 0
+  val generatedDefs = mutable.ListBuffer[String]()
   val generatedCode = mutable.ListBuffer[String]()
 
   var numFuncs = 0
   val generatedFuncNames = mutable.Map[Ident, Int]()
+
+  val tempFuncsToGenerate =
+    mutable.ListBuffer[(Int, List[(Int, Boolean)], Loop)]()
 
   def getFunctionName(name: Ident): String = {
     generatedFuncNames.get(name) match {
@@ -156,7 +217,7 @@ static void h() {
 
   def generateBlock(
       instructions: List[Instruction],
-      labels: List[Int]
+      labels: List[(Int, Boolean)]
   ): Unit = {
     instructions match {
       case Nil => {}
@@ -177,11 +238,18 @@ static void h() {
         generatedCode += s"d(${n},false);"
         generateBlock(rest, labels)
       }
+      case (l @ Loop(_, instructions, _)) :: rest => {
+        val fn = numFuncs
+        numFuncs += 1
+        tempFuncsToGenerate += ((fn, (fn, false) :: labels, l))
+        generatedCode += s"f$fn();"
+        generateBlock(rest, labels)
+      }
       case DeferTailRecLoop(_, instructions) :: rest => {
         val label = numLabels
         numLabels += 1
         generatedCode += s"i();l${label}:"
-        generateBlock(instructions, label :: labels)
+        generateBlock(instructions, (label, true) :: labels)
         generatedCode += s"o();"
         generateBlock(rest, labels)
       }
@@ -189,7 +257,7 @@ static void h() {
         val label = numLabels
         numLabels += 1
         generatedCode += s"l${label}:"
-        generateBlock(instructions, label :: labels)
+        generateBlock(instructions, (label, true) :: labels)
         generateBlock(rest, labels)
       }
       case Match(left, _, right) :: rest => {
@@ -208,7 +276,10 @@ static void h() {
         throw new Exception("Call should have been resolved")
       }
       case Continue(_, i) :: rest => {
-        generatedCode += s"${"r();" * i}goto l${labels(i)};"
+        labels(i) match {
+          case (l, true)  => generatedCode += s"${"r();" * i}goto l${l};"
+          case (f, false) => generatedCode += s"f${f}();"
+        }
         generateBlock(rest, labels)
       }
       case Block(_, instructions) :: rest => {
@@ -217,6 +288,42 @@ static void h() {
       }
       case Print(_) :: rest => {
         generatedCode += s"h();"
+        generateBlock(rest, labels)
+      }
+      case Skip(_, instructions) :: rest => {
+        val label = numLabels
+        numLabels += 1
+        generatedCode += s"i();l${label}:os();"
+        generateBlock(instructions, (label, true) :: labels)
+        generatedCode += s"o();"
+        generateBlock(rest, labels)
+      }
+      case Pop(_) :: rest => {
+        generatedCode += s"op();"
+        generateBlock(rest, labels)
+      }
+      case Add(_) :: rest => {
+        generatedCode += s"oa();"
+        generateBlock(rest, labels)
+      }
+      case Subtract(_) :: rest => {
+        generatedCode += s"om();"
+        generateBlock(rest, labels)
+      }
+      case Clone(_) :: rest => {
+        generatedCode += s"oc();"
+        generateBlock(rest, labels)
+      }
+      case Multiply(_) :: rest => {
+        generatedCode += s"ox();"
+        generateBlock(rest, labels)
+      }
+      case DivMod(_) :: rest => {
+        generatedCode += s"od();"
+        generateBlock(rest, labels)
+      }
+      case Swap(_) :: rest => {
+        generatedCode += s"ow();"
         generateBlock(rest, labels)
       }
       // case Inspect(_) :: rest => {
@@ -228,19 +335,26 @@ static void h() {
   }
 
   def generateProgram(program: Program): String = {
-    generatedCode += skeleton
+    generatedDefs += skeleton
     program.funcs.foreach(f => {
-      generatedCode += s"static void ${getFunctionName(f.name)}();"
-    })
-    program.funcs.foreach(f => {
+      generatedDefs += s"static void ${getFunctionName(f.name)}();"
       generatedCode += s"static void ${getFunctionName(f.name)}(){"
       generateBlock(f.instructions, List())
       generatedCode += "}"
     })
+
     generatedCode += mainStart
     generateBlock(program.instructions, List())
     generatedCode += "}"
 
-    generatedCode.mkString("")
+    while (!tempFuncsToGenerate.isEmpty) {
+      val (fn, labels, loop) = tempFuncsToGenerate.remove(0)
+      generatedDefs += s"static void f$fn();"
+      generatedCode += s"static void f$fn(){"
+      generateBlock(loop.contents, labels)
+      generatedCode += "}"
+    }
+
+    (generatedDefs.toList ::: generatedCode.toList).mkString("")
   }
 }

@@ -15,6 +15,7 @@ import codegen.codegen
 import java.io.BufferedWriter
 import java.io.FileWriter
 import scala.sys.process._
+import optimiser.commonOps
 
 object Main extends App {
   def getFilesWithExtension(dir: File, extension: String): Array[File] = {
@@ -30,11 +31,16 @@ object Main extends App {
 
   var inputFilename: Option[String] = None
   var outputFilename: Option[String] = None
+  var optimisationLevel: Int = 4
   var parsedArgs = args.toList
   while (parsedArgs.nonEmpty) {
     parsedArgs match {
       case "-o" :: o :: rest => {
         outputFilename = Some(o)
+        parsedArgs = rest
+      }
+      case "-u" :: l :: rest => {
+        optimisationLevel = l.toIntOption.getOrElse(0)
         parsedArgs = rest
       }
       case i :: rest => {
@@ -170,8 +176,11 @@ object Main extends App {
 
   val inlinedProgram = (new inliner()).inlineFunctions(mergedProgram)
 
+  val abstractedProgram =
+    commonOps.fullyAbstract(inlinedProgram, optimisationLevel)
+
   val (tailCallOptimisedProgram, tailCallErrors) =
-    (new tailcall()).tailCall(inlinedProgram)
+    (new tailcall()).tailCall(abstractedProgram)
   tailCallErrors match {
     case Nil =>
     case errors => {
@@ -180,7 +189,9 @@ object Main extends App {
     }
   }
 
-  val chainedProgram = chain.mergeOnes(tailCallOptimisedProgram)
+  val chainedProgram = chain.mergeOnes(
+    if (optimisationLevel == 0) abstractedProgram else tailCallOptimisedProgram
+  )
 
   // Generate C code and store in a temporary file
 
@@ -201,7 +212,8 @@ object Main extends App {
     inputFilePath.substring(0, inputFilePath.lastIndexOf("."))
   )
 
-  val clangCommand = s"clang ${tempFile.getAbsolutePath} -o ${outputFile}"
+  val clangCommand =
+    s"clang ${tempFile.getAbsolutePath} -Ofast -o ${outputFile}"
   val exitCode = clangCommand.!
 
   if (exitCode != 0) {

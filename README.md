@@ -244,11 +244,24 @@ There are some cases where `!`s and `?`s need to appear after a recursive call -
 
 Each deferred push is performed when the loop exits.
 
+Tail call optimisation is enabled with `-u 1` and above. It is enabled by default.
+
 #### Common Operations
 
-This is not yet implemented, but functions such as `&`, `+` and `\` could operate on the stack frames themselves, rather than having to operate on each unit on the stack. This would help speed up programs, as these are commonly used operations.
+Common functions such as `&`, `+` and `\` can be optimised to operate on the stack frames themselves in just a few instructions, rather than having to repeatedly deconstruct and reconstruct the stack. This can help speed up programs significantly, particularly for larger integer representations.
+
+Furthermore, complex functions such as `**` (multiplication) and `//` (division/modulo) can also be optimised to just a few CPU instructions.
+
+Here is a table of which functions each optimisation flag optimises:
+
+|             | `-u 2` | `-u 3` | `-u 4` |
+| ----------- | ------ | ------ | ------ |
+| `&`,`+`,`\` | ✅     | ✅     | ✅     |
+| `-`,`*`,`/` | ❌     | ✅     | ✅     |
+| `**`,`//`   | ❌     | ❌     | ✅     |
+
+All of these optimisations are enabled by default.
 
 ## Known Issues
 
-- Loops that cannot be optimised are not currently representable in the compiled code - there are surprisingly few cases where a loop cannot be optimised. Immediate plans to patch this.
 - A run-length encoding representation of the stack puts a limit on the size of each run of `!`s. There are long term plans to patch this.

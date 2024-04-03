@@ -11,6 +11,14 @@ case class Program(
   override def toString: String =
     s"${instructions.mkString(" ")}\n${funcs.mkString("\n")}"
 
+  def toPattern: String =
+    s"MAIN: ${instructions.map(_.toPattern).mkString("::")})::Nil\n\n" +
+      funcs
+        .map(f =>
+          s"${f.name}: ${f.instructions.map(_.toPattern).mkString("::")}::Nil\n\n"
+        )
+        .mkString
+
 }
 object Program
     extends generic.ParserBridge4[Option[Ident], List[Ident], List[

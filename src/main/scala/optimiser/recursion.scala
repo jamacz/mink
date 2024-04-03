@@ -50,7 +50,7 @@ object recursion {
           ) {
             (Continue(pos, level), true)
           } else {
-            var iR = false
+            var iR = isRecursive
             val newParams = params.map(p => {
               val (newP, isR) = tryFlattenBlock(
                 func,
