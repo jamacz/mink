@@ -115,8 +115,12 @@ static void h() {
   }
   op();
 }
+static void oss() {
+  d(s->v,  false);
+  op();
+}
 static void os() {
-  d(s->v, false);
+  d(s->v,  true);
   op();
 }
 static void oa() {
@@ -125,43 +129,47 @@ static void oa() {
     op();
   }
 }
-static void om() {
-  if (s->n != 0) {
-    if (s->n->v < s->v) {
-      s->n->v = 0;
-    } else {
-      s->n->v -= s->v;
-    }
-    op();
-  }
-}
-static void oc() {
-  n(s->v);
-}
 static void ox() {
   if (s->n != 0) {
     s->n->v *= s->v;
     op();
+  } else {
+    s->v = 0;
   }
 }
 static void od() {
   if (s->n == 0) {
     s->v = 0;
-    return;
+  } else {
+    uint32_t n = s->n->v;
+    uint32_t d = s->v;
+    s->n->v = n / d;
+    s->v = n % d;
   }
-  uint32_t n = s->n->v;
-  uint32_t d = s->v;
-  s->n->v = n / d;
-  s->v = n % d;
+}
+static void oc() {
+  n(s->v);
 }
 static void ow() {
   if (s->n == 0) {
     n(0);
-    return;
+  } else {
+    uint32_t v = s->n->v;
+    s->n->v = s->v;
+    s->v = v;
   }
-  uint32_t v = s->n->v;
-  s->n->v = s->v;
-  s->v = v;
+}
+static void om() {
+  if (s->n != 0) {
+    if (s->n->v <= s->v) {
+      s->n->v = 0;
+    } else {
+      s->n->v -= s->v;
+    }
+    op();
+  } else {
+    s->v = 0;
+  }
 }"""
   val mainStart = """int main() {
   s = malloc(sizeof(struct f));
@@ -213,7 +221,7 @@ static void ow() {
         generatedCode += s"d(${n},false);"
         generateBlock(rest, labels)
       }
-      case (l @ Loop(_, instructions, _)) :: rest => {
+      case (l @ Loop(_, instructions)) :: rest => {
         val fn = numFuncs
         numFuncs += 1
         tempFuncsToGenerate += ((fn, (fn, false) :: labels, l))
@@ -265,16 +273,39 @@ static void ow() {
         generatedCode += s"h();"
         generateBlock(rest, labels)
       }
+      case Pop(_) :: rest => {
+        generatedCode += s"op();"
+        generateBlock(rest, labels)
+      }
+      case RecPop(_, instructions) :: rest => {
+        val label = numLabels
+        numLabels += 1
+        generatedCode += s"l${label}:op();"
+        generateBlock(instructions, (label, true) :: labels)
+        generateBlock(rest, labels)
+      }
+      case DeferPop(_, instructions) :: rest => {
+        val label = numLabels
+        numLabels += 1
+        generatedCode += s"i();l${label}:op();"
+        generateBlock(instructions, (label, true) :: labels)
+        generatedCode += s"o();"
+        generateBlock(rest, labels)
+      }
       case Skip(_, instructions) :: rest => {
+        val label = numLabels
+        numLabels += 1
+        generatedCode += s"i();l${label}:oss();"
+        generateBlock(instructions, (label, true) :: labels)
+        generatedCode += s"o();"
+        generateBlock(rest, labels)
+      }
+      case DeferSkip(_, instructions) :: rest => {
         val label = numLabels
         numLabels += 1
         generatedCode += s"i();l${label}:os();"
         generateBlock(instructions, (label, true) :: labels)
         generatedCode += s"o();"
-        generateBlock(rest, labels)
-      }
-      case Pop(_) :: rest => {
-        generatedCode += s"op();"
         generateBlock(rest, labels)
       }
       case Add(_) :: rest => {
@@ -289,16 +320,16 @@ static void ow() {
         generatedCode += s"oc();"
         generateBlock(rest, labels)
       }
+      case Swap(_) :: rest => {
+        generatedCode += s"ow();"
+        generateBlock(rest, labels)
+      }
       case Multiply(_) :: rest => {
         generatedCode += s"ox();"
         generateBlock(rest, labels)
       }
       case DivMod(_) :: rest => {
         generatedCode += s"od();"
-        generateBlock(rest, labels)
-      }
-      case Swap(_) :: rest => {
-        generatedCode += s"ow();"
         generateBlock(rest, labels)
       }
       // case Inspect(_) :: rest => {

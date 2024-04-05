@@ -15,28 +15,14 @@ object chain {
       case NewStackItem(pos, n) :: AddToStackItem(_, m) :: rest => {
         mergeOnesBlock(NewStackItem(pos, n + m) :: rest, current)
       }
-      case DeferAddToStackItem(pos, n) :: DeferAddToStackItem(_, m) :: rest => {
-        mergeOnesBlock(DeferAddToStackItem(pos, n + m) :: rest, current)
-      }
-      case DeferAddToStackItem(pos, n) :: DeferNewStackItem(_, m) :: rest => {
-        mergeOnesBlock(DeferNewStackItem(pos, n + m) :: rest, current)
-      }
       case Match(left, pos, right) :: rest => {
         val newLeft = mergeOnesBlock(left)
         val newRight = mergeOnesBlock(right)
         mergeOnesBlock(rest, current :+ Match(newLeft, pos, newRight))
       }
-      case Loop(pos, instructions, o) :: rest => {
+      case Loop(pos, instructions) :: rest => {
         val newInstructions = mergeOnesBlock(instructions)
-        mergeOnesBlock(rest, current :+ Loop(pos, newInstructions, o))
-      }
-      case TailRecLoop(pos, instructions) :: rest => {
-        val newInstructions = mergeOnesBlock(instructions)
-        mergeOnesBlock(rest, current :+ TailRecLoop(pos, newInstructions))
-      }
-      case DeferTailRecLoop(pos, instructions) :: rest => {
-        val newInstructions = mergeOnesBlock(instructions)
-        mergeOnesBlock(rest, current :+ DeferTailRecLoop(pos, newInstructions))
+        mergeOnesBlock(rest, current :+ Loop(pos, newInstructions))
       }
       case i :: rest => {
         mergeOnesBlock(rest, current :+ i)

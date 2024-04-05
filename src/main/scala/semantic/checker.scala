@@ -217,7 +217,7 @@ class checker(val programs: Map[Ident, Program]) {
           )
         )
       }
-      case Loop(pos, instructions, o) :: rest => {
+      case Loop(pos, instructions) :: rest => {
         checkScope(
           packageName,
           imports,
@@ -236,8 +236,7 @@ class checker(val programs: Map[Ident, Program]) {
               importedFunctions,
               functionParams,
               level + 1
-            ),
-            o
+            )
           )
         )
       }

@@ -25,11 +25,6 @@ private[parser] object lexer {
     ".",
     "%",
     "#"
-    // "`"
-    // "[",
-    // "]",
-    // "<",
-    // ">"
   )
   private val identPredicate =
     predicate.Basic(x => !x.isWhitespace && !operators.contains(x.toString))

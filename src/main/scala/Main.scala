@@ -15,7 +15,8 @@ import codegen.codegen
 import java.io.BufferedWriter
 import java.io.FileWriter
 import scala.sys.process._
-import optimiser.commonOps
+import optimiser.abstracter
+import optimiser.std
 
 object Main extends App {
   def getFilesWithExtension(dir: File, extension: String): Array[File] = {
@@ -32,11 +33,21 @@ object Main extends App {
   var inputFilename: Option[String] = None
   var outputFilename: Option[String] = None
   var optimisationLevel: Int = 4
+  var clangOptimisation: Boolean = true
   var parsedArgs = args.toList
+  var verbose = false
   while (parsedArgs.nonEmpty) {
     parsedArgs match {
+      case "-v" :: rest => {
+        verbose = true
+        parsedArgs = rest
+      }
       case "-o" :: o :: rest => {
         outputFilename = Some(o)
+        parsedArgs = rest
+      }
+      case "-n" :: rest => {
+        clangOptimisation = false
         parsedArgs = rest
       }
       case "-u" :: l :: rest => {
@@ -113,19 +124,20 @@ object Main extends App {
 
   // Merge all files with same package name
 
-  val parsedFiles = pf.toList
-    .groupBy(_._1)
-    .map({ case (k, v) =>
-      (
-        k,
-        Program(
-          Some(k),
-          v.flatMap(_._2.imports).distinct,
-          v.flatMap(_._2.instructions),
-          v.flatMap(_._2.funcs)
+  val parsedFiles =
+    (std.standardLibrary.map(x => (x.packageName.get, x)) ++ pf.toList)
+      .groupBy(_._1)
+      .map({ case (k, v) =>
+        (
+          k,
+          Program(
+            Some(k),
+            v.flatMap(_._2.imports).distinct,
+            v.flatMap(_._2.instructions),
+            v.flatMap(_._2.funcs)
+          )
         )
-      )
-    })
+      })
 
   // Semantically check all packages
 
@@ -133,14 +145,7 @@ object Main extends App {
   var checkingFailed = false
   val checkedPrograms = parsedFiles
     .map({ case (_, parsedProgram) =>
-      val (checkedProgram, checkedErrors) = checker.checkProgram(parsedProgram)
-      checkedErrors match {
-        case Nil =>
-        case errors => {
-          errors.foreach(println)
-          checkingFailed = true
-        }
-      }
+      val (checkedProgram, _) = checker.checkProgram(parsedProgram)
       checkedProgram
     })
     .toList
@@ -176,11 +181,16 @@ object Main extends App {
 
   val inlinedProgram = (new inliner()).inlineFunctions(mergedProgram)
 
-  val abstractedProgram =
-    commonOps.fullyAbstract(inlinedProgram, optimisationLevel)
+  val chainedProgram = chain.mergeOnes(
+    inlinedProgram
+  )
 
   val (tailCallOptimisedProgram, tailCallErrors) =
-    (new tailcall()).tailCall(abstractedProgram)
+    if (optimisationLevel <= 0) (chainedProgram, Nil)
+    else {
+      (new tailcall()).tailCall(inlinedProgram)
+    }
+
   tailCallErrors match {
     case Nil =>
     case errors => {
@@ -189,13 +199,14 @@ object Main extends App {
     }
   }
 
-  val chainedProgram = chain.mergeOnes(
-    if (optimisationLevel == 0) abstractedProgram else tailCallOptimisedProgram
-  )
+  val abstractedProgram =
+    abstracter.scanProgram(tailCallOptimisedProgram, optimisationLevel)
+
+  if (verbose) println(abstractedProgram)
 
   // Generate C code and store in a temporary file
 
-  val generatedCode = (new codegen()).generateProgram(chainedProgram)
+  val generatedCode = (new codegen()).generateProgram(abstractedProgram)
 
   val inputFileName = file.getName()
 
@@ -213,7 +224,10 @@ object Main extends App {
   )
 
   val clangCommand =
-    s"clang ${tempFile.getAbsolutePath} -Ofast -o ${outputFile}"
+    if (!clangOptimisation)
+      s"clang ${tempFile.getAbsolutePath} -O0 -o ${outputFile}"
+    else
+      s"clang ${tempFile.getAbsolutePath} -Ofast -o ${outputFile}"
   val exitCode = clangCommand.!
 
   if (exitCode != 0) {

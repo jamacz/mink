@@ -18,9 +18,7 @@ class tailcall {
         isRecursive(left, level) ||
         isRecursive(right, level) ||
         isRecursive(rest, level)
-      case Loop(_, instructions, _) :: rest =>
-        isRecursive(instructions, level + 1) || isRecursive(rest, level)
-      case Skip(_, instructions) :: rest =>
+      case Loop(_, instructions) :: rest =>
         isRecursive(instructions, level + 1) || isRecursive(rest, level)
       case _ :: rest =>
         isRecursive(rest, level)
@@ -95,13 +93,13 @@ class tailcall {
 
         }
 
-      case (l @ Loop(pos, instructions, o)) :: rest =>
+      case (l @ Loop(pos, instructions)) :: rest =>
         val (newInstructions, recursion) = tailCallFunc(
           instructions,
           List()
         )
 
-        val newLoop = getNewLoop(l, newInstructions, recursion, o)
+        val newLoop = getNewLoop(l, newInstructions, recursion)
 
         if (isRecursive(instructions, 1)) {
           if (rest.isEmpty) {
@@ -124,42 +122,7 @@ class tailcall {
         } else {
           tailCallFunc(
             rest,
-            current :+ newLoop
-          )
-        }
-      case (s @ Skip(pos, instructions)) :: rest =>
-        val (newInstructions, recursion) = tailCallFunc(
-          instructions,
-          List()
-        )
-
-        val newSkip = Skip(pos, newInstructions)
-
-        if (isRecursive(instructions, 1)) {
-          if (rest.isEmpty) {
-            (
-              current :+ newSkip,
-              mergeRecursionLevels(DeferTailRecursion, recursion)
-            )
-          } else {
-            val deferred = isOnlyUnits(rest)
-            deferred match {
-              case Some(d) =>
-                (
-                  current ::: (d :+ newSkip),
-                  mergeRecursionLevels(DeferTailRecursion, recursion)
-                )
-              case None =>
-                (
-                  current ::: newSkip :: rest,
-                  mergeRecursionLevels(NoRecursion, recursion)
-                )
-            }
-          }
-        } else {
-          tailCallFunc(
-            rest,
-            current :+ newSkip
+            (current :+ newLoop)
           )
         }
       case i :: rest =>
@@ -173,9 +136,9 @@ class tailcall {
   def getNewLoop(
       loop: Loop,
       newInstructions: List[Instruction],
-      recursion: RecursionLevel,
-      o: RecursionLevel
+      recursion: RecursionLevel
   ) = {
+    val o: RecursionLevel = NoRecursion
     val pos = loop.pos
     val instructions = loop.contents
     recursion match {
@@ -202,7 +165,7 @@ class tailcall {
             )
           case _ => {}
         }
-        Loop(pos, instructions, o)
+        Loop(pos, instructions)
     }
   }
 
@@ -210,9 +173,9 @@ class tailcall {
       instructions: List[Instruction]
   ): List[Instruction] = {
     val newInstructions = instructions.map({
-      case l @ Loop(_, contents, o) => {
+      case l @ Loop(_, contents) => {
         val (newContents, rec) = tailCallFunc(contents, List())
-        getNewLoop(l, newContents, rec, o)
+        getNewLoop(l, newContents, rec)
       }
       case m @ Match(left, pos, right) => {
         val newLeft = tailCallBlock(left)

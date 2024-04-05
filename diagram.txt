@@ -1,0 +1,17 @@
+collect all mink files
+=>
+parse
+=>
+merge same package
+=>
+analyse & resolve
+=>
+merge entire program
+->
+inline functions -> convert recursion to loop
+->
+convert recursion to loop
+->
+tail call optimise
+->
+chain

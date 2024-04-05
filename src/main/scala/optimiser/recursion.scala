@@ -93,7 +93,7 @@ object recursion {
           iR || iR2,
           level
         )
-      case (l @ Loop(pos, instructions, o)) :: rest =>
+      case (l @ Loop(pos, instructions)) :: rest =>
         val (newInstructions, iR) = tryFlattenBlock(
           func,
           instructions,
@@ -104,7 +104,7 @@ object recursion {
         tryFlattenBlock(
           func,
           rest,
-          current :+ Loop(pos, newInstructions, o),
+          current :+ Loop(pos, newInstructions),
           iR,
           level
         )
@@ -130,7 +130,7 @@ object recursion {
         f.name,
         f.funcParams,
         f.export,
-        List(Loop(f.pos, newInstructions, NoRecursion))
+        List(Loop(f.pos, newInstructions))
       )
     } else {
       Func(f.pos, f.name, f.funcParams, f.export, newInstructions)

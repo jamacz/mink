@@ -42,14 +42,14 @@ You can push directly to the stack using `!` and `?`:
 ! ?
 ```
 
-Mink reads operators from left to right, so `!` is pushed before `?`.
+Mink reads operators from left to right, so `!` is pushed, and then `?` is pushed.
 
 There are a few aliases for a large string of `!`s and `?`s:
 
 - `%n` will push `?`, followed by n `!`s, to the stack
 - `"Hello world!"` will push `?`, followed by the ASCII representations of each character in the string in reverse, to the stack
 
-Unsigned integers are typically represented by a string of `!`s followed by a terminating `?`. The compiler is optimised to represent integers this way.
+Unsigned integers are typically represented by pushing a terminating `?` followed by a string of `!`s. The compiler is optimised to represent integers this way.
 
 ### Printing
 
@@ -212,6 +212,23 @@ To export a function from a package, write `?=` instead of `=`:
 
 Packages can be spread across multiple files.
 
+### Standard Library
+
+Here are some built-in optimised functions:
+
+| Package    | Name    | Description                                                                     | Definition                                                                |
+| ---------- | ------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `std`      | `& a`   | Skip the first integer, and perform `a`                                         | `& $ a ?= & a ! : a ?`                                                    |
+| `std`      | `\`     | Pop the first integer                                                           | `\ $ ?= \ :`                                                              |
+| `std`      | `+`     | Add the top two integers                                                        | `+ $ ?= + ! :`                                                            |
+| `std`      | `*`     | Clone the top integer                                                           | `* $ ?= & (? ?) {& (& ! !) , :}`                                          |
+| `std`      | `-`     | Subtract the top two integers                                                   | `- $ ?= & (: ?) - :`                                                      |
+| `std`      | `/`     | Swap the top two integers                                                       | `/ $ ?= & & ? {& & ! , :}`                                                |
+| `std.math` | `**`    | Multiply the top two integers                                                   | `** ?= & & ? {& (* & +) , : \}`                                           |
+| `std.math` | `//`    | Divide and modulo the top two integers                                          | `// ?= & & ? {& * * & (& ! - (!?! & (: ?) : ?)) / ((:) & & (\ !) , : \)}` |
+| `std.fmt`  | `\|`    | Convert an integer to its string representation of base at the top of the stack | `\| ?= & & ? {* & (// %48 + /) / (! / , : \)}`                            |
+| `std.fmt`  | `` ` `` | Print each non-zero integer on the stack, for debugging                         | `` ` ?= ! * %10\|#"\n"# & ` : ? ``                                        |
+
 ### Optimisation
 
 #### Stack Representation
@@ -252,7 +269,7 @@ Common functions such as `&`, `+` and `\` can be optimised to operate on the sta
 
 Furthermore, complex functions such as `**` (multiplication) and `//` (division/modulo) can also be optimised to just a few CPU instructions.
 
-Here is a table of which functions each optimisation flag optimises:
+Here is a table of which standard library functions each optimisation flag optimises:
 
 |             | `-u 2` | `-u 3` | `-u 4` |
 | ----------- | ------ | ------ | ------ |

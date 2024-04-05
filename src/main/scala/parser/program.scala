@@ -105,9 +105,7 @@ class program {
 
   private[parser] lazy val atom: Parsley[Instruction] = choice(
     Block(tokenPos <~ "(", instruction <~ ")"),
-    Loop(tokenPos <~ "{", instruction <~ "}", pure(NoRecursion)),
-    // Loop(tokenPos <~ "[", instruction <~ "]", pure(DeferTailRecursion)),
-    // Loop(tokenPos <~ "<", instruction <~ ">", pure(TailRecursion)),
+    Loop(tokenPos <~ "{", instruction <~ "}"),
     AddToStackItem(tokenPos <~ "!", pure(1)),
     NewStackItem(tokenPos <~ "?", pure(0)),
     NewStackItem(tokenPos <~ "%", lexer.integer),
