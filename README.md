@@ -1,26 +1,40 @@
 # Mink
 
+![mink](./mink-logo.png)
+
 Mink is an esoteric programming language built around the concept of an infinite global stack. It is based on a similar language called Clink, but introduces the concept of loops and macros.
 
 ## Dependencies
 
-Mink is built using `sbt`. To build Mink, run:
+Mink requires these packages:
 
-`sbt assembly`
+```txt
+sbt clang java
+```
 
-and find the .jar file in `./target/scala-2.13`.
+`clang` and `java` should be able to be found in your package manager. Instructions on how to install `sbt` can be found [here](https://www.scala-sbt.org/1.x/docs/Setup.html).
 
-Mink also requires `clang` to be installed.
+## Installation
+
+To install Mink globally, run
+
+```bash
+./install.sh
+```
+
+To install locally, run
+
+```bash
+./install.sh -l
+```
 
 ## Usage
 
-To compile `input.mink` file, run:
+To compile a file `input.mink`, run:
 
 ```bash
 mink input.mink
 ```
-
-Mink searches for local packages from the working directory.
 
 To compile to a specific location, run:
 
@@ -34,74 +48,119 @@ You can run `output` as a regular executable.
 
 ### Pushing
 
-Mink uses an infinite global stack of `!`s and `?`s. Initally, it is set to an infinite number of `?`s.
+Mink uses an infinite global stack of `!`s and `?`s.
+
+Initally, it is set to an infinite number of `?`s:
+
+```txt
+????????????????????...
+```
 
 You can push directly to the stack using `!` and `?`:
 
 ```mink
-! ?
+! ? ! !
 ```
 
-Mink reads operators from left to right, so `!` is pushed, and then `?` is pushed.
+Mink reads operators from left to right, so it pushes `!`, then `?`, then `!`, then `!`.
+
+The stack now looks like this:
+
+```txt
+!!?!????????????????...
+```
 
 There are a few aliases for a large string of `!`s and `?`s:
 
-- `%n` will push `?`, followed by n `!`s, to the stack
-- `"Hello world!"` will push `?`, followed by the ASCII representations of each character in the string in reverse, to the stack
+#### Integers
 
-Unsigned integers are typically represented by pushing a terminating `?` followed by a string of `!`s. The compiler is optimised to represent integers this way.
+`%n` will push `?`, followed by n `!`s, to the stack. Performing:
+
+```mink
+%3 %8 %4
+```
+
+will make the stack look like this:
+
+```txt
+!!!!?!!!!!!!!?!!!???...
+```
+
+Unsigned integers are typically represented this way (pushing a terminating `?`, followed by a string of `!`s). The compiler is optimised to represent integers this way.
+
+#### Strings
+
+`"Hello world!"` will push `%0` (null terminator), followed by the ASCII representations of each character in the string in reverse, to the stack.
+
+Performing
+
+```mink
+"Hi!"
+```
+
+is equivalent to
+
+```mink
+%0 %33 %105 %72
+```
 
 ### Printing
 
 `#` is used to print the null-terminated string at the top of the stack.
 
+Performing
+
 ```mink
 "Hello world!\n" #
 ```
 
-$\Rightarrow$
+will print
 
 ```txt
 Hello world!
 ```
 
-You could also write the ASCII characters directly:
+You could also write the ASCII characters directly. Perfoming
 
 ```mink
-%0 %10 %105 %72 #
+%0 %33 %105 %72 #
 ```
 
-$\Rightarrow$
+will print
 
 ```txt
-Hi
+Hi!
 ```
 
 ### Popping/Matching
 
 `:` is used to pop off of the stack, and branch depending on whether the popped item was `!` or `?`.
 
+Performing
+
 ```mink
 ! ("Left!\n" # : "Right!\n" #)
 ```
 
-$\Rightarrow$
+will print
 
 ```txt
 Left!
 ```
 
+and performing
+
 ```mink
 ? ("Left!\n" # : "Right!\n" #)
 ```
 
-$\Rightarrow$
+will print
 
 ```txt
 Right!
 ```
 
-`:` has a higher precedence than unary operators, so `()` can be used to enclose a match statement.
+`:` has a lower precedence than unary operators, so `()` can be used to enclose a match statement.
 
 ### Functions
 
@@ -114,10 +173,10 @@ Functions are defined with `=`, and their names can contain any unused non-white
 This is the "add" function:
 
 - First, it pops off the stack.
-- If it is `?`, then it does nothing and returns
+- If it is `?`, then it does nothing and returns.
 - If it is `!`, then it calls itself, and then pushes `!` to the stack.
 
-This is effectively removing the first `?` on the stack, which is equivalent to adding the top two "integers" on the stack.
+This is effectively removing the first `?` on the stack, which is equivalent to adding the top two integers on the stack.
 
 Another similar function is the "pop" integer function:
 
@@ -125,7 +184,7 @@ Another similar function is the "pop" integer function:
 \ = \ :
 ```
 
-which removes all units on the stack until it has popped a `?`, which is equivalent to popping the top "integer" off the stack.
+which removes all units on the stack until it has popped a `?`, which is equivalent to popping the top integer off the stack.
 
 ### Loops
 
@@ -135,7 +194,9 @@ The add function can also be written as:
 {, ! :}
 ```
 
-A loop is defined with `{}`. It can be thought of as similar to an anonymous function. Whenever `,` is seen, it calls the surrounding loop like a function, before continuing when the function returns.
+A loop is defined with `{}`. Loops in Mink can be thought of as similar to an anonymous function.
+
+Whenever `,` is seen, it calls the surrounding loop like a function, before continuing when the function returns.
 
 Similarly, the pop function can also be written as:
 
@@ -143,30 +204,32 @@ Similarly, the pop function can also be written as:
 {, :}
 ```
 
-Mink tries to represent all recursive functions as loops, as it makes it easier to optimise. Optimisation is discussed later.
+(Mink tries to represent all recursive functions as loops, as it makes it easier to optimise. Optimisation is discussed later.)
 
-If a function can be represented as a loop, it can be inlined using `$`.
+#### Inlining
+
+Functions can be inlined using `$`. Writing
 
 ```mink
 %2 %3 +
 + $ = + ! :
 ```
 
-compiles to the equivalent of
+is equivalent to
 
 ```mink
-?!! ?!!! {; ! :}
+?!! ?!!! {, ! :}
 ```
 
 ### Macros
 
-Let's say you wanted to add `!` to the second item on the stack. You would write:
+Let's say you wanted to add `!` to the second integer on the stack. You would write:
 
 ```mink
 & = & ! : ! ?
 ```
 
-This pops all `!`s until it sees a `?`, pops it, pushes `!`, and readds the `?`, before pushing back all of the popped `!`s. This effectively "skips" the first integer on the stack.
+This pops all `!`s until it sees a `?`, pops it, pushes `!`, and readds the `?`, before pushing back all of the popped `!`s. This has the effect of skipping the first integer on the stack.
 
 Let's say you want to now pop the second item off the stack. You would write:
 
@@ -214,7 +277,9 @@ Packages can be spread across multiple files.
 
 ### Standard Library
 
-Here are some built-in optimised functions:
+`std` and its subpackages do not need to be manually added to the working directory to be imported.
+
+Here are the functions included in the standard library, and their corresponding package:
 
 | Package    | Name    | Description                                                                     | Definition                                                                |
 | ---------- | ------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
@@ -235,7 +300,7 @@ Here are some built-in optimised functions:
 
 One way of storing items on the stack is as a list of booleans. However, this would be very space inefficient, and larger integer representation would take up an unreasonable amount of space.
 
-Another way to represent the stack is to use run-length encoding - each stack frame stores the number of `!`s preceding the next `?` as an integer. This is optimised for Mink's typical representation of integers on the stack.
+Another way to represent the stack is to use run-length encoding - each stack frame stores the number of `!`s preceding the next `?` as an integer. This is optimised for Mink's typical representation of unsigned integers on the stack.
 
 #### Recursion
 
@@ -261,17 +326,19 @@ There are some cases where `!`s and `?`s need to appear after a recursive call -
 
 Each deferred push is performed when the loop exits.
 
-Tail call optimisation is enabled with `-u 1` and above. It is enabled by default.
+Tail call optimisation is enabled with `-O 1` and above. It is enabled by default.
 
 #### Common Operations
 
-Common functions such as `&`, `+` and `\` can be optimised to operate on the stack frames themselves in just a few instructions, rather than having to repeatedly deconstruct and reconstruct the stack. This can help speed up programs significantly, particularly for larger integer representations.
+Common functions such as `&`, `+` and `\` can be optimised to operate on the stack frames themselves in just a few instructions, rather than having to repeatedly deconstruct and reconstruct the stack.
 
-Furthermore, complex functions such as `**` (multiplication) and `//` (division/modulo) can also be optimised to just a few CPU instructions.
+This can help speed up programs significantly, particularly for larger integer representations.
+
+Furthermore, some complex functions such as `**` (multiplication) and `//` (division/modulo) can also be optimised to just a few CPU instructions.
 
 Here is a table of which standard library functions each optimisation flag optimises:
 
-|             | `-u 2` | `-u 3` | `-u 4` |
+|             | `-O 2` | `-O 3` | `-O 4` |
 | ----------- | ------ | ------ | ------ |
 | `&`,`+`,`\` | ✅     | ✅     | ✅     |
 | `-`,`*`,`/` | ❌     | ✅     | ✅     |
@@ -281,4 +348,5 @@ All of these optimisations are enabled by default.
 
 ## Known Issues
 
-- A run-length encoding representation of the stack puts a limit on the size of each run of `!`s. There are long term plans to patch this.
+- Multi-file packages bundle all of their imports together, which is possibly a mistake. Plans to fix this.
+- A run-length encoding representation of the stack puts a limit on the size of each run of `!`s. Long term plans to patch this.

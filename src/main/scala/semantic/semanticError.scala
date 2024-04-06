@@ -33,10 +33,10 @@ case class TooFewFunctionParams(
       s"  need $expected, found $actual"
 }
 
-case class UnknownModule(pos: Pos, name: Ident) extends SemanticError {
+case class UnknownPackage(pos: Pos, name: Ident) extends SemanticError {
   override def toString: String =
     s"$pos: import error\n" +
-      s"  unknown module \"$name\""
+      s"  unknown package \"$name\""
 }
 
 case class AmbiguousFunction(pos: Pos, name: Ident) extends SemanticError {

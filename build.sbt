@@ -13,7 +13,7 @@ scalaVersion := "2.13.12"
 
 name := "mink"
 organization := "io.jamac"
-version := "1.0"
+version := "1.0.0"
 
 // Note, it's not required for you to define these three settings. These are
 // mostly only necessary if you intend to publish your library's binaries on a

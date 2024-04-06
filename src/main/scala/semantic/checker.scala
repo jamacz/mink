@@ -281,7 +281,7 @@ class checker(val programs: Map[Ident, Program]) {
               .forall({ case (a, b) => a == b })
           )
         if (ps.isEmpty)
-          errors.addOne(UnknownModule(pos, i))
+          errors.addOne(UnknownPackage(pos, i))
         ps.map(_._2).toList
       })
       .groupBy(_.packageName)

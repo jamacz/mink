@@ -106,14 +106,29 @@ static void r() {
   free(f);
 }
 static void h() {
+  uint32_t l = 0;
+  struct f *f = s;
+  while (f != 0 && f->v != 0) {
+    l++;
+    f = f->n;
+  }
+  char *b = malloc(l + 1);
+  b[l] = 0;
+  char *c = b;
   while (s->v != 0) {
-    printf("%c", (char)s->v);
+    *c = (char)s->v;
+    c++;
+    if (s->n == 0) {
+      s->v = 0;
+      break;
+    }
     struct f *f = s;
-    if (s->n == 0) return;
     s = s->n;
     free(f);
   }
   op();
+  printf("%s", b);
+  free(b);
 }
 static void oss() {
   d(s->v,  false);

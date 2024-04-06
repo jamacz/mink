@@ -29,6 +29,7 @@ import parsley.combinator.option
 import parsley.Parsley.atomic
 import parsley.lift.lift2
 import parsley.Parsley.notFollowedBy
+import java.nio.charset.StandardCharsets
 
 class program {
   private class CustomErrorBuilder
@@ -113,9 +114,11 @@ class program {
     (tokenPos <~> lexer.string).map(s =>
       Block(
         s._1,
-        NewStackItem(s._1, 0) :: s._2.reverse.toList.map(c =>
-          NewStackItem(s._1, c)
-        )
+        NewStackItem(s._1, 0) :: (s._2
+          .getBytes(StandardCharsets.UTF_8)
+          .reverse
+          .map(c => NewStackItem(s._1, c))
+          .toList)
       )
     ),
     Print(tokenPos <~ "#"),

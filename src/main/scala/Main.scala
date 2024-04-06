@@ -28,6 +28,18 @@ object Main extends App {
       .flatMap(dir => getFilesWithExtension(dir, extension))
   }
 
+  def help() = {
+    println("""usage: mink [options] <input> [options]
+       mink -v
+options:
+  -h          print this help message
+  -V          verbose mode
+  -o <file>   output file
+  -N          disable clang optimisation
+  -O <level>  optimisation level (default 4)""")
+    sys.exit(1)
+  }
+
   // Parse arguments
 
   var inputFilename: Option[String] = None
@@ -38,23 +50,42 @@ object Main extends App {
   var verbose = false
   while (parsedArgs.nonEmpty) {
     parsedArgs match {
-      case "-v" :: rest => {
+      case "-V" :: rest => {
         verbose = true
         parsedArgs = rest
       }
-      case "-o" :: o :: rest => {
-        outputFilename = Some(o)
-        parsedArgs = rest
+      case "-v" :: rest => {
+        println("mink 1.0.0")
+        sys.exit(0)
       }
-      case "-n" :: rest => {
+      case "-o" :: rest => {
+        rest match {
+          case Nil => {
+            println("missing argument(s) for flag -o")
+            help()
+          }
+          case o :: rest => {
+            outputFilename = Some(o)
+            parsedArgs = rest
+          }
+        }
+      }
+      case "-h" :: rest => {
+        help()
+      }
+      case "-N" :: rest => {
         clangOptimisation = false
         parsedArgs = rest
       }
-      case "-u" :: l :: rest => {
+      case "-O" :: l :: rest => {
         optimisationLevel = l.toIntOption.getOrElse(0)
         parsedArgs = rest
       }
       case i :: rest => {
+        if (i.startsWith("-")) {
+          println(s"unknown flag $i")
+          help()
+        }
         inputFilename = Some(i)
         parsedArgs = rest
       }
@@ -63,8 +94,7 @@ object Main extends App {
   }
 
   if (inputFilename.isEmpty) {
-    println("Usage: mink <input>")
-    sys.exit(1)
+    help()
   }
 
   val input = inputFilename.get
