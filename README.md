@@ -1,8 +1,10 @@
 # Mink
 
-![mink](./mink-logo.png)
+<img style="float: left; width: 96px; margin-right: 20px;" src="mink-logo.png" />
 
-Mink is an esoteric programming language built around the concept of an infinite global stack. It is based on a similar language called Clink, but introduces the concept of loops and macros.
+Mink is an esoteric programming language built around the concept of an infinite global stack. It aims to be as minimalistic, but extensible, as possible.
+
+It is based on a similar language called Clink, but introduces the concept of loops and macros.
 
 ## Dependencies
 
