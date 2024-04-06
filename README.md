@@ -1,6 +1,6 @@
 # Mink
 
-<img style="float: left; width: 96px; margin-right: 20px;" src="mink-logo.png" />
+![Mink logo](./mink-logo.png)
 
 Mink is an esoteric programming language built around the concept of an infinite global stack. It aims to be as minimalistic, but extensible, as possible.
 
