@@ -20,7 +20,7 @@ struct temp_frame {
   struct temp_frame *next;
 };
 struct temp_frame *temp_stack = 0;
-static void pop() {
+static void pop_stack() {
   if (stack->next == 0) {
     stack->value = 0;
   } else {
@@ -29,14 +29,14 @@ static void pop() {
     free(f);
   }
 }
-static void add(uint32_t x) { stack->value += x; }
-static void new(uint32_t x) {
+static void add_stack(uint32_t x) { stack->value += x; }
+static void new_stack(uint32_t x) {
   struct frame *f = malloc(sizeof(struct frame));
   f->value = x;
   f->next = stack;
   stack = f;
 }
-static void defer(uint32_t x, bool add) {
+static void defer_stack(uint32_t x, bool add) {
   if (temp_stack->add) {
     temp_stack->bottom->value += x;
   } else {
@@ -48,7 +48,7 @@ static void defer(uint32_t x, bool add) {
   }
   temp_stack->add = add;
 }
-static void into() {
+static void enter_loop() {
   struct temp_frame *t = malloc(sizeof(struct temp_frame));
   struct frame *f = malloc(sizeof(struct frame));
   f->value = 0;
@@ -59,7 +59,7 @@ static void into() {
   t->next = temp_stack;
   temp_stack = t;
 }
-static void outof() {
+static void exit_loop() {
   if (temp_stack->add) {
     temp_stack->bottom->value += stack->value;
     if (stack->next == 0) {
@@ -76,16 +76,16 @@ static void outof() {
   temp_stack = temp_stack->next;
   free(t);
 }
-static bool match() {
+static bool match_stack() {
   if (stack->value > 0) {
     stack->value--;
     return true;
   } else {
-    pop();
+    pop_stack();
     return false;
   }
 }
-static void merge() {
+static void merge_stacks() {
   struct temp_frame *t = temp_stack->next;
   if (t->add) {
     struct frame *o = temp_stack->top;
@@ -105,7 +105,7 @@ static void merge() {
   temp_stack = t;
   free(f);
 }
-static void print() {
+static void print_stack() {
   uint32_t l = 0;
   struct frame *f = stack;
   while (f != 0 && f->value != 0) {
@@ -126,11 +126,11 @@ static void print() {
     stack = stack->next;
     free(f);
   }
-  pop();
+  pop_stack();
   printf("%s", b);
   free(b);
 }
-static void read() {
+static void read_stack() {
   char *s = NULL;
   size_t bufsize = 0;
   getline(&s, &bufsize, stdin);
@@ -143,39 +143,39 @@ static void read() {
     c--;
     *c = 0;
   }
-  new (0);
+  new_stack(0);
 
   char *q = s;
   while (*q != 0) {
     c--;
-    new (*c);
+    new_stack(*c);
     q++;
   }
   free(s);
 }
-static void skip() {
-  defer(stack->value, false);
-  pop();
+static void skip_stack() {
+  defer_stack(stack->value, false);
+  pop_stack();
 }
-static void skip_o() {
-  defer(stack->value, true);
-  pop();
+static void skip_ones() {
+  defer_stack(stack->value, true);
+  pop_stack();
 }
-static void plus() {
+static void plus_stack() {
   if (stack->next != 0) {
     stack->next->value += stack->value;
-    pop();
+    pop_stack();
   }
 }
-static void mult() {
+static void mult_stack() {
   if (stack->next != 0) {
     stack->next->value *= stack->value;
-    pop();
+    pop_stack();
   } else {
     stack->value = 0;
   }
 }
-static void divmod() {
+static void divmod_stack() {
   if (stack->next == 0) {
     stack->value = 0;
   } else {
@@ -185,24 +185,24 @@ static void divmod() {
     stack->value = n % d;
   }
 }
-static void clone() { new (stack->value); }
-static void swap() {
+static void clone_stack() { new_stack(stack->value); }
+static void swap_stack() {
   if (stack->next == 0) {
-    new (0);
+    new_stack(0);
   } else {
     uint32_t v = stack->next->value;
     stack->next->value = stack->value;
     stack->value = v;
   }
 }
-static void minus() {
+static void minus_stack() {
   if (stack->next != 0) {
     if (stack->next->value <= stack->value) {
       stack->next->value = 0;
     } else {
       stack->next->value -= stack->value;
     }
-    pop();
+    pop_stack();
   } else {
     stack->value = 0;
   }
@@ -218,12 +218,12 @@ static void minus() {
     while (*c != 0) {
       c++;
     }
-    new (0);
+    new_stack(0);
 
     char *q = s;
     while (*q != 0) {
       c--;
-      new (*c);
+      new_stack(*c);
       q++;
     }
   }"""
@@ -258,19 +258,19 @@ static void minus() {
       case Nil => {}
       // TODO: Handle integer overflow
       case AddToStackItem(_, n) :: rest => {
-        generatedCode += s"add(${n});"
+        generatedCode += s"add_stack(${n});"
         generateBlock(rest, labels)
       }
       case NewStackItem(_, n) :: rest => {
-        generatedCode += s"new(${n});"
+        generatedCode += s"new_stack(${n});"
         generateBlock(rest, labels)
       }
       case DeferAddToStackItem(_, n) :: rest => {
-        generatedCode += s"defer(${n},true);"
+        generatedCode += s"defer_stack(${n},true);"
         generateBlock(rest, labels)
       }
       case DeferNewStackItem(_, n) :: rest => {
-        generatedCode += s"defer(${n},false);"
+        generatedCode += s"defer_stack(${n},false);"
         generateBlock(rest, labels)
       }
       case (l @ Loop(_, instructions)) :: rest => {
@@ -283,9 +283,9 @@ static void minus() {
       case DeferTailRecLoop(_, instructions) :: rest => {
         val label = numLabels
         numLabels += 1
-        generatedCode += s"into();l${label}:"
+        generatedCode += s"enter_loop();l${label}:"
         generateBlock(instructions, (label, true) :: labels)
-        generatedCode += s"outof();"
+        generatedCode += s"exit_loop();"
         generateBlock(rest, labels)
       }
       case TailRecLoop(_, instructions) :: rest => {
@@ -296,7 +296,7 @@ static void minus() {
         generateBlock(rest, labels)
       }
       case Match(left, _, right) :: rest => {
-        generatedCode += s"if(match()){"
+        generatedCode += s"if(match_stack()){"
         generateBlock(left, labels)
         generatedCode += s"}else{"
         generateBlock(right, labels)
@@ -312,7 +312,8 @@ static void minus() {
       }
       case Continue(_, i) :: rest => {
         labels(i) match {
-          case (l, true)  => generatedCode += s"${"merge();" * i}goto l${l};"
+          case (l, true) =>
+            generatedCode += s"${"merge_stacks();" * i}goto l${l};"
           case (f, false) => generatedCode += s"f${f}();"
         }
         generateBlock(rest, labels)
@@ -322,70 +323,70 @@ static void minus() {
         generateBlock(rest, labels)
       }
       case Print(_) :: rest => {
-        generatedCode += s"print();"
+        generatedCode += s"print_stack();"
         generateBlock(rest, labels)
       }
       case Read(_) :: rest => {
-        generatedCode += s"read();"
+        generatedCode += s"read_stack();"
         generateBlock(rest, labels)
       }
       case Pop(_) :: rest => {
-        generatedCode += s"pop();"
+        generatedCode += s"pop_stack();"
         generateBlock(rest, labels)
       }
       case RecPop(_, instructions) :: rest => {
         val label = numLabels
         numLabels += 1
-        generatedCode += s"l${label}:pop();"
+        generatedCode += s"l${label}:pop_stack();"
         generateBlock(instructions, (label, true) :: labels)
         generateBlock(rest, labels)
       }
       case DeferPop(_, instructions) :: rest => {
         val label = numLabels
         numLabels += 1
-        generatedCode += s"into();l${label}:pop();"
+        generatedCode += s"enter_loop();l${label}:pop_stack();"
         generateBlock(instructions, (label, true) :: labels)
-        generatedCode += s"outof();"
+        generatedCode += s"exit_loop();"
         generateBlock(rest, labels)
       }
       case Skip(_, instructions) :: rest => {
         val label = numLabels
         numLabels += 1
-        generatedCode += s"into();l${label}:skip();"
+        generatedCode += s"enter_loop();l${label}:skip_stack();"
         generateBlock(instructions, (label, true) :: labels)
-        generatedCode += s"outof();"
+        generatedCode += s"exit_loop();"
         generateBlock(rest, labels)
       }
       case DeferSkip(_, instructions) :: rest => {
         val label = numLabels
         numLabels += 1
-        generatedCode += s"into();l${label}:skip_o();"
+        generatedCode += s"enter_loop();l${label}:skip_ones();"
         generateBlock(instructions, (label, true) :: labels)
-        generatedCode += s"outof();"
+        generatedCode += s"exit_loop();"
         generateBlock(rest, labels)
       }
       case Add(_) :: rest => {
-        generatedCode += s"plus();"
+        generatedCode += s"plus_stack();"
         generateBlock(rest, labels)
       }
       case Subtract(_) :: rest => {
-        generatedCode += s"minus();"
+        generatedCode += s"minus_stack();"
         generateBlock(rest, labels)
       }
       case Clone(_) :: rest => {
-        generatedCode += s"clone();"
+        generatedCode += s"clone_stack();"
         generateBlock(rest, labels)
       }
       case Swap(_) :: rest => {
-        generatedCode += s"swap();"
+        generatedCode += s"swap_stack();"
         generateBlock(rest, labels)
       }
       case Multiply(_) :: rest => {
-        generatedCode += s"mult();"
+        generatedCode += s"mult_stack();"
         generateBlock(rest, labels)
       }
       case DivMod(_) :: rest => {
-        generatedCode += s"divmod();"
+        generatedCode += s"divmod_stack();"
         generateBlock(rest, labels)
       }
       case RawC(_, _, fCall) :: rest => {

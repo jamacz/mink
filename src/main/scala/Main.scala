@@ -271,10 +271,10 @@ options:
       s"clang ${tempFile.getAbsolutePath} -Ofast -o ${outputFile}"
   val exitCode = clangCommand.!
 
+  tempFile.delete()
+
   if (exitCode != 0) {
     println("compilation error:\n  clang failed to compile")
     sys.exit(1)
   }
-
-  tempFile.delete()
 }
