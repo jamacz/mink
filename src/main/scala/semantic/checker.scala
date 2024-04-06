@@ -6,6 +6,7 @@ import scala.annotation.tailrec
 
 class checker(val programs: Map[Ident, Program]) {
   val errors = mutable.ListBuffer[SemanticError]()
+  val cImports = mutable.ListBuffer[String]()
 
   def getAllFunctions(program: ast.Program): Map[String, Func] = {
     program.funcs
@@ -255,6 +256,19 @@ class checker(val programs: Map[Ident, Program]) {
           currentInstructions :+ Continue(pos, i)
         )
       }
+      case (i @ RawC(_, p, _)) :: rest => {
+        cImports += p
+        checkScope(
+          packageName,
+          imports,
+          rest,
+          allFunctions,
+          importedFunctions,
+          functionParams,
+          level,
+          currentInstructions :+ i
+        )
+      }
       case i :: rest => {
         checkScope(
           packageName,
@@ -270,7 +284,9 @@ class checker(val programs: Map[Ident, Program]) {
     }
   }
 
-  def checkProgram(program: ast.Program): (Program, List[SemanticError]) = {
+  def checkProgram(
+      program: ast.Program
+  ): (Program, List[SemanticError], List[String]) = {
     var functions = getAllFunctions(program)
     val importedPackages = program.imports
       .flatMap({ case i @ Ident(pos, path) =>
@@ -331,6 +347,6 @@ class checker(val programs: Map[Ident, Program]) {
         ),
         functions.values.toList
       )
-    (newProgram, errors.toList)
+    (newProgram, errors.toList, cImports.toList)
   }
 }

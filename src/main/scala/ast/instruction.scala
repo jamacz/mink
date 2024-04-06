@@ -129,6 +129,13 @@ case class Continue(pos: Pos, recurseLevel: Int) extends Instruction {
 }
 object Continue extends generic.ParserBridge2[Pos, Int, Continue]
 
+case class RawC(pos: Pos, filename: String, func: String) extends Instruction {
+  override def toString: String = s"%\"$filename\"\"$func\""
+  def toPattern: String = s"RawC(_, $filename, $func)"
+  def toAST: String = s"RawC(pos, $filename, $func)"
+}
+object RawC extends generic.ParserBridge3[Pos, String, String, RawC]
+
 case class Print(pos: Pos) extends Instruction {
   override def toString: String = s"#"
   def toPattern: String = s"Print(_)"
@@ -136,10 +143,12 @@ case class Print(pos: Pos) extends Instruction {
 }
 object Print extends generic.ParserBridge1[Pos, Print]
 
-// case class Inspect(pos: Pos) extends Instruction {
-//   override def toString: String = s"`"
-// }
-// object Inspect extends generic.ParserBridge1[Pos, Inspect]
+case class Read(pos: Pos) extends Instruction {
+  override def toString: String = s"@"
+  def toPattern: String = s"Read(_)"
+  def toAST: String = s"Read(pos)"
+}
+object Read extends generic.ParserBridge1[Pos, Read]
 
 case class Pop(pos: Pos) extends Instruction {
   override def toString: String = s"$$pop"

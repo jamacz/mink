@@ -106,7 +106,9 @@ is equivalent to
 %0 %33 %105 %72
 ```
 
-### Printing
+### I/O
+
+#### Printing
 
 `#` is used to print the null-terminated string at the top of the stack.
 
@@ -133,6 +135,18 @@ will print
 ```txt
 Hi!
 ```
+
+#### Reading Input
+
+`@` is used to halt the program and read a line of user input.
+
+Performing
+
+```mink
+@ #
+```
+
+will wait for user input, and print what the user has just typed (without the line break).
 
 ### Popping/Matching
 
@@ -295,6 +309,34 @@ Here are the functions included in the standard library, and their corresponding
 | `std.math` | `//`    | Divide and modulo the top two integers                                          | `// ?= & & ? {& * * & (& ! - (!?! & (: ?) : ?)) / ((:) & & (\ !) , : \)}` |
 | `std.fmt`  | `\|`    | Convert an integer to its string representation of base at the top of the stack | `\| ?= & & ? {* & (// %48 + /) / (! / , : \)}`                            |
 | `std.fmt`  | `` ` `` | Print each non-zero integer on the stack, for debugging                         | `` ` ?= ! * %10\|#"\n"# & ` : ? ``                                        |
+
+### External Functions
+
+Some functions are not representable in Mink - for example, getting the current time, or interacting with external devices.
+
+Because Mink compiles to C, it is possible to compile other C files with the compiler output. The programmer can make use of C header files and libraries this way.
+
+When `%` is not used for integer literals, it can also be used with two strings representing the C file name and function in the C file to call.
+
+Here is a file called `time.c`:
+
+```c
+#include <stdint.h>
+#include <time.h>
+
+void time_time() {
+  time_t t = time(0);
+  new ((uint32_t)t);
+}
+```
+
+which can be called from Mink by writing
+
+```mink
+time $ ?= % "time.c" "time_time"
+```
+
+and calling `time` like a normal function.
 
 ### Optimisation
 

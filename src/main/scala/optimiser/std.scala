@@ -30,7 +30,7 @@ object std {
         Func(
           pos,
           Ident(pos, List("\\")),
-          None,
+          Some(List()),
           true,
           List(
             Match(List(Call(pos, Ident(pos, List("\\")))), pos, List())
@@ -39,7 +39,7 @@ object std {
         Func(
           pos,
           Ident(pos, List("+")),
-          None,
+          Some(List()),
           true,
           List(
             Match(
@@ -52,7 +52,7 @@ object std {
         Func(
           pos,
           Ident(pos, List("*")),
-          None,
+          Some(List()),
           true,
           List(
             Call(pos, Ident(pos, List("&"))),
@@ -83,7 +83,7 @@ object std {
         Func(
           pos,
           Ident(pos, List("-")),
-          None,
+          Some(List()),
           true,
           List(
             Match(
@@ -103,7 +103,7 @@ object std {
         Func(
           pos,
           Ident(pos, List("/")),
-          None,
+          Some(List()),
           true,
           List(
             Call(pos, Ident(pos, List("&"))),

@@ -17,6 +17,7 @@ import java.io.FileWriter
 import scala.sys.process._
 import optimiser.abstracter
 import optimiser.std
+import java.nio.file.Paths
 
 object Main extends App {
   def getFilesWithExtension(dir: File, extension: String): Array[File] = {
@@ -124,7 +125,11 @@ options:
   var parser = new program()
 
   val fileContent = Source.fromFile(file).getLines().mkString("\n")
-  val parsedMain = parser.parse(file.getName(), fileContent) match {
+  val parsedMain = parser.parse(
+    file.getName(),
+    Paths.get(workingDir).relativize(Paths.get(file.toURI()).getParent()),
+    fileContent
+  ) match {
     case parsley.Failure(error) =>
       println(error)
       parsingFailed = true
@@ -135,7 +140,11 @@ options:
 
   for (f <- allFiles) {
     val fileContent = Source.fromFile(f).getLines().mkString("\n")
-    parser.parse(f.getName(), fileContent) match {
+    parser.parse(
+      f.getName(),
+      Paths.get(workingDir).relativize(Paths.get(f.toURI).getParent()),
+      fileContent
+    ) match {
       case parsley.Failure(error) =>
         println(error)
         parsingFailed = true
@@ -175,14 +184,14 @@ options:
   var checkingFailed = false
   val checkedPrograms = parsedFiles
     .map({ case (_, parsedProgram) =>
-      val (checkedProgram, _) = checker.checkProgram(parsedProgram)
+      val (checkedProgram, _, _) = checker.checkProgram(parsedProgram)
       checkedProgram
     })
     .toList
 
   val parsedProgram = parsedMain.get
-  val (checkedProgram, checkedErrors) =
-    (new checker(parsedFiles)).checkProgram(parsedProgram)
+  val (checkedProgram, checkedErrors, cImports) =
+    checker.checkProgram(parsedProgram)
   checkedErrors match {
     case Nil =>
     case errors => {
@@ -236,13 +245,15 @@ options:
 
   // Generate C code and store in a temporary file
 
-  val generatedCode = (new codegen()).generateProgram(abstractedProgram)
+  val generatedCode =
+    (new codegen()).generateProgram(abstractedProgram, cImports)
 
   val inputFileName = file.getName()
 
   val tempFile = File.createTempFile(
     inputFileName.substring(0, inputFileName.lastIndexOf(".")),
-    ".c"
+    ".c",
+    workingDirFile.get
   )
   val writer = new BufferedWriter(new FileWriter(tempFile))
   writer.write(generatedCode)

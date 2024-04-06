@@ -8,188 +8,225 @@ class codegen {
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-struct f {
-  uint32_t v;
-  struct f *n;
+struct frame {
+  uint32_t value;
+  struct frame *next;
 };
-struct f *s;
-struct t {
-  struct f *t;
-  struct f *b;
-  bool a;
-  struct t *n;
+struct frame *stack;
+struct temp_frame {
+  struct frame *top;
+  struct frame *bottom;
+  bool add;
+  struct temp_frame *next;
 };
-struct t *g = 0;
-static void op() {
-  if (s->n == 0) {
-    s->v = 0;
+struct temp_frame *temp_stack = 0;
+static void pop() {
+  if (stack->next == 0) {
+    stack->value = 0;
   } else {
-    struct f *f = s;
-    s = s->n;
+    struct frame *f = stack;
+    stack = stack->next;
     free(f);
   }
 }
-static void p(uint32_t x) { s->v += x; }
-static void n(uint32_t x) {
-  struct f *f = malloc(sizeof(struct f));
-  f->v = x;
-  f->n = s;
-  s = f;
+static void add(uint32_t x) { stack->value += x; }
+static void new(uint32_t x) {
+  struct frame *f = malloc(sizeof(struct frame));
+  f->value = x;
+  f->next = stack;
+  stack = f;
 }
-static void d(uint32_t x, bool a) {
-  if (g->a) {
-    g->b->v += x;
+static void defer(uint32_t x, bool add) {
+  if (temp_stack->add) {
+    temp_stack->bottom->value += x;
   } else {
-    struct f *f = malloc(sizeof(struct f));
-    f->v = x;
-    f->n = 0;
-    g->b->n = f;
-    g->b = f;
+    struct frame *f = malloc(sizeof(struct frame));
+    f->value = x;
+    f->next = 0;
+    temp_stack->bottom->next = f;
+    temp_stack->bottom = f;
   }
-  g->a = a;
+  temp_stack->add = add;
 }
-static void i() {
-  struct t *t = malloc(sizeof(struct t));
-  struct f *f = malloc(sizeof(struct f));
-  f->v = 0;
-  f->n = 0;
-  t->t = f;
-  t->b = f;
-  t->a = true;
-  t->n = g;
-  g = t;
+static void into() {
+  struct temp_frame *t = malloc(sizeof(struct temp_frame));
+  struct frame *f = malloc(sizeof(struct frame));
+  f->value = 0;
+  f->next = 0;
+  t->top = f;
+  t->bottom = f;
+  t->add = true;
+  t->next = temp_stack;
+  temp_stack = t;
 }
-static void o() {
-  if (g->a) {
-    g->b->v += s->v;
-    if (s->n == 0) {
-      s->v = 0;
+static void outof() {
+  if (temp_stack->add) {
+    temp_stack->bottom->value += stack->value;
+    if (stack->next == 0) {
+      stack->value = 0;
     } else {
-      struct f *f = s;
-      s = s->n;
+      struct frame *f = stack;
+      stack = stack->next;
       free(f);
     }
   }
-  g->b->n = s;
-  s = g->t;
-  struct t *t = g;
-  g = g->n;
+  temp_stack->bottom->next = stack;
+  stack = temp_stack->top;
+  struct temp_frame *t = temp_stack;
+  temp_stack = temp_stack->next;
   free(t);
 }
-static bool m() {
-  if (s->v > 0) {
-    s->v--;
+static bool match() {
+  if (stack->value > 0) {
+    stack->value--;
     return true;
   } else {
-    op();
+    pop();
     return false;
   }
 }
-static void r() {
-  struct t *t = g->n;
-  if (t->a) {
-    struct f *o = g->t;
-    t->b->v += o->v;
-    if (o->n == 0) {
-      o->v = 0;
-      g->a = true;
+static void merge() {
+  struct temp_frame *t = temp_stack->next;
+  if (t->add) {
+    struct frame *o = temp_stack->top;
+    t->bottom->value += o->value;
+    if (o->next == 0) {
+      o->value = 0;
+      temp_stack->add = true;
     } else {
-      g->t = o->n;
+      temp_stack->top = o->next;
       free(o);
     }
   }
-  t->a = g->a;
-  t->b->n = g->t;
-  t->b = g->b;
-  struct t *f = g;
-  g = t;
+  t->add = temp_stack->add;
+  t->bottom->next = temp_stack->top;
+  t->bottom = temp_stack->bottom;
+  struct temp_frame *f = temp_stack;
+  temp_stack = t;
   free(f);
 }
-static void h() {
+static void print() {
   uint32_t l = 0;
-  struct f *f = s;
-  while (f != 0 && f->v != 0) {
+  struct frame *f = stack;
+  while (f != 0 && f->value != 0) {
     l++;
-    f = f->n;
+    f = f->next;
   }
   char *b = malloc(l + 1);
   b[l] = 0;
   char *c = b;
-  while (s->v != 0) {
-    *c = (char)s->v;
+  while (stack->value != 0) {
+    *c = (char)stack->value;
     c++;
-    if (s->n == 0) {
-      s->v = 0;
+    if (stack->next == 0) {
+      stack->value = 0;
       break;
     }
-    struct f *f = s;
-    s = s->n;
+    struct frame *f = stack;
+    stack = stack->next;
     free(f);
   }
-  op();
+  pop();
   printf("%s", b);
   free(b);
 }
-static void oss() {
-  d(s->v,  false);
-  op();
+static void read() {
+  char *s = NULL;
+  size_t bufsize = 0;
+  getline(&s, &bufsize, stdin);
+
+  char *c = s;
+  while (*c != 0) {
+    c++;
+  }
+  if (*(c - 1) == '\n') {
+    c--;
+    *c = 0;
+  }
+  new (0);
+
+  char *q = s;
+  while (*q != 0) {
+    c--;
+    new (*c);
+    q++;
+  }
+  free(s);
 }
-static void os() {
-  d(s->v,  true);
-  op();
+static void skip() {
+  defer(stack->value, false);
+  pop();
 }
-static void oa() {
-  if (s->n != 0) {
-    s->n->v += s->v;
-    op();
+static void skip_o() {
+  defer(stack->value, true);
+  pop();
+}
+static void plus() {
+  if (stack->next != 0) {
+    stack->next->value += stack->value;
+    pop();
   }
 }
-static void ox() {
-  if (s->n != 0) {
-    s->n->v *= s->v;
-    op();
+static void mult() {
+  if (stack->next != 0) {
+    stack->next->value *= stack->value;
+    pop();
   } else {
-    s->v = 0;
+    stack->value = 0;
   }
 }
-static void od() {
-  if (s->n == 0) {
-    s->v = 0;
+static void divmod() {
+  if (stack->next == 0) {
+    stack->value = 0;
   } else {
-    uint32_t n = s->n->v;
-    uint32_t d = s->v;
-    s->n->v = n / d;
-    s->v = n % d;
+    uint32_t n = stack->next->value;
+    uint32_t d = stack->value;
+    stack->next->value = n / d;
+    stack->value = n % d;
   }
 }
-static void oc() {
-  n(s->v);
-}
-static void ow() {
-  if (s->n == 0) {
-    n(0);
+static void clone() { new (stack->value); }
+static void swap() {
+  if (stack->next == 0) {
+    new (0);
   } else {
-    uint32_t v = s->n->v;
-    s->n->v = s->v;
-    s->v = v;
+    uint32_t v = stack->next->value;
+    stack->next->value = stack->value;
+    stack->value = v;
   }
 }
-static void om() {
-  if (s->n != 0) {
-    if (s->n->v <= s->v) {
-      s->n->v = 0;
+static void minus() {
+  if (stack->next != 0) {
+    if (stack->next->value <= stack->value) {
+      stack->next->value = 0;
     } else {
-      s->n->v -= s->v;
+      stack->next->value -= stack->value;
     }
-    op();
+    pop();
   } else {
-    s->v = 0;
+    stack->value = 0;
   }
-}"""
-  val mainStart = """int main() {
-  s = malloc(sizeof(struct f));
-  s->v = 0;
-  s->n = 0;"""
+}
+"""
+  val mainStart = """int main(int argc, char *argv[]) {
+  stack = malloc(sizeof(struct frame));
+  stack->value = 0;
+  stack->next = 0;
+  for (int i = argc - 1; i >= 0; i--) {
+    char *s = argv[i];
+    char *c = s;
+    while (*c != 0) {
+      c++;
+    }
+    new (0);
+
+    char *q = s;
+    while (*q != 0) {
+      c--;
+      new (*c);
+      q++;
+    }
+  }"""
 
   var numLabels = 0
   val generatedDefs = mutable.ListBuffer[String]()
@@ -221,19 +258,19 @@ static void om() {
       case Nil => {}
       // TODO: Handle integer overflow
       case AddToStackItem(_, n) :: rest => {
-        generatedCode += s"p(${n});"
+        generatedCode += s"add(${n});"
         generateBlock(rest, labels)
       }
       case NewStackItem(_, n) :: rest => {
-        generatedCode += s"n(${n});"
+        generatedCode += s"new(${n});"
         generateBlock(rest, labels)
       }
       case DeferAddToStackItem(_, n) :: rest => {
-        generatedCode += s"d(${n},true);"
+        generatedCode += s"defer(${n},true);"
         generateBlock(rest, labels)
       }
       case DeferNewStackItem(_, n) :: rest => {
-        generatedCode += s"d(${n},false);"
+        generatedCode += s"defer(${n},false);"
         generateBlock(rest, labels)
       }
       case (l @ Loop(_, instructions)) :: rest => {
@@ -246,9 +283,9 @@ static void om() {
       case DeferTailRecLoop(_, instructions) :: rest => {
         val label = numLabels
         numLabels += 1
-        generatedCode += s"i();l${label}:"
+        generatedCode += s"into();l${label}:"
         generateBlock(instructions, (label, true) :: labels)
-        generatedCode += s"o();"
+        generatedCode += s"outof();"
         generateBlock(rest, labels)
       }
       case TailRecLoop(_, instructions) :: rest => {
@@ -259,7 +296,7 @@ static void om() {
         generateBlock(rest, labels)
       }
       case Match(left, _, right) :: rest => {
-        generatedCode += s"if(m()){"
+        generatedCode += s"if(match()){"
         generateBlock(left, labels)
         generatedCode += s"}else{"
         generateBlock(right, labels)
@@ -275,7 +312,7 @@ static void om() {
       }
       case Continue(_, i) :: rest => {
         labels(i) match {
-          case (l, true)  => generatedCode += s"${"r();" * i}goto l${l};"
+          case (l, true)  => generatedCode += s"${"merge();" * i}goto l${l};"
           case (f, false) => generatedCode += s"f${f}();"
         }
         generateBlock(rest, labels)
@@ -285,66 +322,74 @@ static void om() {
         generateBlock(rest, labels)
       }
       case Print(_) :: rest => {
-        generatedCode += s"h();"
+        generatedCode += s"print();"
+        generateBlock(rest, labels)
+      }
+      case Read(_) :: rest => {
+        generatedCode += s"read();"
         generateBlock(rest, labels)
       }
       case Pop(_) :: rest => {
-        generatedCode += s"op();"
+        generatedCode += s"pop();"
         generateBlock(rest, labels)
       }
       case RecPop(_, instructions) :: rest => {
         val label = numLabels
         numLabels += 1
-        generatedCode += s"l${label}:op();"
+        generatedCode += s"l${label}:pop();"
         generateBlock(instructions, (label, true) :: labels)
         generateBlock(rest, labels)
       }
       case DeferPop(_, instructions) :: rest => {
         val label = numLabels
         numLabels += 1
-        generatedCode += s"i();l${label}:op();"
+        generatedCode += s"into();l${label}:pop();"
         generateBlock(instructions, (label, true) :: labels)
-        generatedCode += s"o();"
+        generatedCode += s"outof();"
         generateBlock(rest, labels)
       }
       case Skip(_, instructions) :: rest => {
         val label = numLabels
         numLabels += 1
-        generatedCode += s"i();l${label}:oss();"
+        generatedCode += s"into();l${label}:skip();"
         generateBlock(instructions, (label, true) :: labels)
-        generatedCode += s"o();"
+        generatedCode += s"outof();"
         generateBlock(rest, labels)
       }
       case DeferSkip(_, instructions) :: rest => {
         val label = numLabels
         numLabels += 1
-        generatedCode += s"i();l${label}:os();"
+        generatedCode += s"into();l${label}:skip_o();"
         generateBlock(instructions, (label, true) :: labels)
-        generatedCode += s"o();"
+        generatedCode += s"outof();"
         generateBlock(rest, labels)
       }
       case Add(_) :: rest => {
-        generatedCode += s"oa();"
+        generatedCode += s"plus();"
         generateBlock(rest, labels)
       }
       case Subtract(_) :: rest => {
-        generatedCode += s"om();"
+        generatedCode += s"minus();"
         generateBlock(rest, labels)
       }
       case Clone(_) :: rest => {
-        generatedCode += s"oc();"
+        generatedCode += s"clone();"
         generateBlock(rest, labels)
       }
       case Swap(_) :: rest => {
-        generatedCode += s"ow();"
+        generatedCode += s"swap();"
         generateBlock(rest, labels)
       }
       case Multiply(_) :: rest => {
-        generatedCode += s"ox();"
+        generatedCode += s"mult();"
         generateBlock(rest, labels)
       }
       case DivMod(_) :: rest => {
-        generatedCode += s"od();"
+        generatedCode += s"divmod();"
+        generateBlock(rest, labels)
+      }
+      case RawC(_, _, fCall) :: rest => {
+        generatedCode += s"$fCall();"
         generateBlock(rest, labels)
       }
       // case Inspect(_) :: rest => {
@@ -355,8 +400,9 @@ static void om() {
     }
   }
 
-  def generateProgram(program: Program): String = {
+  def generateProgram(program: Program, cImports: List[String]): String = {
     generatedDefs += skeleton
+    cImports.foreach(i => generatedDefs += s"#include \"$i\"\n")
     program.funcs.foreach(f => {
       generatedDefs += s"static void ${getFunctionName(f.name)}();"
       generatedCode += s"static void ${getFunctionName(f.name)}(){"

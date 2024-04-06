@@ -24,10 +24,13 @@ private[parser] object lexer {
     "}",
     ".",
     "%",
-    "#"
+    "#",
+    "@"
   )
   private val identPredicate =
-    predicate.Basic(x => !x.isWhitespace && !operators.contains(x.toString))
+    predicate.Basic(x =>
+      !x.isWhitespace && !operators.contains(x.toString) && x != '\"'
+    )
 
   private val desc = LexicalDesc.plain.copy(
     nameDesc = NameDesc.plain.copy(

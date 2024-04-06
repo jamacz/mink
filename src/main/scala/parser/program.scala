@@ -30,6 +30,7 @@ import parsley.Parsley.atomic
 import parsley.lift.lift2
 import parsley.Parsley.notFollowedBy
 import java.nio.charset.StandardCharsets
+import java.nio.file.Path
 
 class program {
   private class CustomErrorBuilder
@@ -65,12 +66,14 @@ class program {
   private implicit val builder: ErrorBuilder[String] = new CustomErrorBuilder
 
   var filename: String = ""
+  var parentPath: Path = null
 
   lazy val tokenPos: Parsley[Pos] =
     pos.map(p => Pos(filename, p._1, p._2))
 
-  def parse(fn: String, content: String) = {
+  def parse(fn: String, pth: Path, content: String) = {
     filename = fn
+    parentPath = pth
     lexer.fully(program).parse(content)
   }
 
@@ -109,7 +112,14 @@ class program {
     Loop(tokenPos <~ "{", instruction <~ "}"),
     AddToStackItem(tokenPos <~ "!", pure(1)),
     NewStackItem(tokenPos <~ "?", pure(0)),
-    NewStackItem(tokenPos <~ "%", lexer.integer),
+    atomic(NewStackItem(tokenPos <~ "%", lexer.integer)),
+    RawC(
+      tokenPos <~ "%",
+      lexer.string.map(n => {
+        parentPath.resolve(n).toString()
+      }),
+      lexer.string
+    ),
     Continue(tokenPos <~ ",", countMany(".")),
     (tokenPos <~> lexer.string).map(s =>
       Block(
@@ -122,6 +132,7 @@ class program {
       )
     ),
     Print(tokenPos <~ "#"),
+    Read(tokenPos <~ "@"),
     // Inspect(tokenPos <~ "`"),
     Call(
       tokenPos,
